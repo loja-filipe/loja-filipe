@@ -346,6 +346,11 @@ footer img{width:26px;height:26px;object-fit:contain;vertical-align:middle;margi
           <input type="password" id="cfgGhToken" placeholder="Cole seu token aqui (ghp_...)">
           <div class="config-hint">⚠️ Cole o token aqui e clique em Salvar. Ele ficará <strong>somente neste navegador</strong> — nunca no código público.</div>
         </div>
+        <div class="config-field">
+          <label>Google Sheets — URL do Apps Script</label>
+          <input type="text" id="cfgSheetUrl" placeholder="https://script.google.com/macros/s/...">
+          <div class="config-hint">Pedidos também serão registrados na planilha automaticamente.</div>
+        </div>
       </div>
       <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:4px;">
         <button class="btn-salvar-config" onclick="salvarConfig()">✅ Salvar</button>
@@ -471,6 +476,7 @@ function salvarConfig(){
   config.pix     =document.getElementById('cfgPix').value.trim()||config.pix;
   config.whats   =document.getElementById('cfgWhats').value.trim()||config.whats;
   config.ghToken =document.getElementById('cfgGhToken').value.trim()||config.ghToken;
+  config.sheetUrl=document.getElementById('cfgSheetUrl').value.trim()||config.sheetUrl;
   try{localStorage.setItem(CONFIG_KEY,JSON.stringify(config));}catch(e){}
   atualizarStatusConfig();toast('✅ Configurações salvas!','verde');
 }
@@ -483,7 +489,8 @@ function atualizarStatusConfig(){
 function preencherFormConfig(){
   document.getElementById('cfgPix').value   =config.pix||'';
   document.getElementById('cfgWhats').value =config.whats||'';
-  document.getElementById('cfgGhToken').value='';  // nunca pré-preenche token por segurança
+  document.getElementById('cfgGhToken').value='';
+  document.getElementById('cfgSheetUrl').value=config.sheetUrl||'';
   const qrSrc=config.qr||QR_DEFAULT_B64;
   document.getElementById('qrPreviewSmall').src=qrSrc;
   document.getElementById('qrTexto').textContent=config.qr?'QR personalizado ✅':'QR Code atual (Caixa)';
@@ -564,6 +571,15 @@ function abrirWhatsApp(comprador,items,total){
   window.open(`https://wa.me/${num}?text=${msg}`,'_blank');
 }
 
+
+async function enviarSheet(pedido){
+  if(!config.sheetUrl)return false;
+  try{
+    await fetch(config.sheetUrl,{method:'POST',mode:'no-cors',body:JSON.stringify(pedido),headers:{'Content-Type':'text/plain'}});
+    return true;
+  }catch(e){console.warn('Sheet erro:',e);return false;}
+}
+
 /* ── CONFIRMAR PEDIDO ── */
 async function confirmarPedido(){
   const nome=document.getElementById('nomComprador').value.trim();
@@ -579,7 +595,7 @@ async function confirmarPedido(){
     comprador:nome,total,
     itens:items.map(x=>({nome:x.nome,qty:x.qty,preco:x.preco,subtotal:+(x.preco*x.qty).toFixed(2)}))
   };
-  const ghOk=await salvarPedidoGH(pedido);
+  const [ghOk]=await Promise.all([salvarPedidoGH(pedido),enviarSheet(pedido)]);
   btn.disabled=false;btn.innerHTML='✅ JÁ PAGUEI — CONFIRMAR PEDIDO';
   fecharPix();
   // Gera PDF
@@ -720,7 +736,9 @@ document.getElementById('modalPix').addEventListener('click',e=>{if(e.target===e
 document.getElementById('senhaOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)fecharSenha();});
 document.getElementById('adminOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)fecharAdmin();});
 
-carregarConfig();carregarLS();renderProdutos();
+carregarConfig();
+if(!config.sheetUrl)config.sheetUrl='https://script.google.com/macros/s/AKfycbyOA-SQNddNgLwFkntQNZ5KltEOW6tWZIs2Fb8u4XddYMnp6PHC_2XTLNLWGu6DreZ1/exec';
+carregarLS();renderProdutos();
 </script>
 </body>
 </html>
