@@ -190,6 +190,36 @@ body{font-family:'Nunito',sans-serif;background:#0a1a0a;color:#fff;overflow-x:hi
 .btn-del{background:rgba(255,60,60,.1);color:#ff8080;border:1px solid rgba(255,60,60,.3);}
 .btn-del:hover{background:rgba(255,60,60,.28);}
 .admin-empty{text-align:center;padding:24px;color:rgba(255,255,255,.3);font-size:13px;}
+
+/* ESTOQUE */
+.estoque-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:18px;}
+.estoque-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:16px;overflow:hidden;transition:.2s;}
+.estoque-card:hover{border-color:rgba(254,223,0,.3);}
+.estoque-card-header{display:flex;align-items:center;gap:12px;padding:14px;}
+.estoque-thumb{width:52px;height:52px;border-radius:9px;object-fit:cover;object-position:center;flex-shrink:0;background:rgba(255,255,255,.08);overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.estoque-thumb img{width:100%;height:100%;object-fit:cover;}
+.estoque-nome{font-weight:800;font-size:13px;color:#fff;margin-bottom:3px;}
+.estoque-preco{font-family:'Bebas Neue',cursive;font-size:18px;color:var(--amarelo);}
+.estoque-bars{padding:0 14px 14px;}
+.estoque-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+.estoque-label{font-size:11px;color:rgba(255,255,255,.5);font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+.estoque-num{font-family:'Bebas Neue',cursive;font-size:20px;}
+.estoque-num.disponivel{color:#4dff88;}
+.estoque-num.vendido{color:var(--amarelo);}
+.estoque-num.ilimitado{color:rgba(255,255,255,.3);font-size:14px;}
+.barra-wrap{height:6px;background:rgba(255,255,255,.08);border-radius:3px;margin-bottom:10px;overflow:hidden;}
+.barra-fill{height:100%;border-radius:3px;transition:width .6s ease;}
+.barra-fill.verde{background:var(--verde);}
+.barra-fill.amarelo{background:var(--amarelo);}
+.compradores-lista{border-top:1px solid rgba(255,255,255,.06);padding:10px 14px 12px;}
+.compradores-titulo{font-size:10px;font-weight:800;letter-spacing:2px;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:7px;}
+.comprador-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(0,155,58,.1);border:1px solid rgba(0,155,58,.25);border-radius:7px;padding:3px 9px;font-size:11px;color:rgba(200,255,220,.85);margin:2px;}
+.estoque-resumo-geral{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:18px;}
+.erg-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;text-align:center;}
+.erg-valor{font-family:'Bebas Neue',cursive;font-size:30px;color:var(--amarelo);}
+.erg-label{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;}
+.estoque-loading{text-align:center;padding:28px;color:rgba(255,255,255,.3);font-size:13px;}
+
 /* PEDIDOS */
 .pedidos-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
 .pedidos-resumo{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px;}
@@ -310,6 +340,7 @@ footer img{width:26px;height:26px;object-fit:contain;vertical-align:middle;margi
     <div class="admin-tabs">
       <div class="admin-tab active" onclick="mudarAba('config')">💳 Configurações</div>
       <div class="admin-tab" onclick="mudarAba('produtos')">📦 Produtos</div>
+      <div class="admin-tab" onclick="mudarAba('estoque')">📊 Estoque</div>
       <div class="admin-tab" onclick="mudarAba('pedidos')">📋 Pedidos</div>
     </div>
 
@@ -384,6 +415,19 @@ footer img{width:26px;height:26px;object-fit:contain;vertical-align:middle;margi
       </div>
       <div class="admin-lista-title">📦 Produtos <span class="badge-count" id="adminQtd">0</span></div>
       <div class="admin-lista" id="adminLista"></div>
+    </div>
+
+
+    <!-- ESTOQUE -->
+    <div class="tab-content" id="tab-estoque">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+        <div style="font-family:'Bebas Neue',cursive;font-size:18px;color:var(--amarelo);letter-spacing:2px">📊 Estoque & Vendas</div>
+        <button class="btn-refresh" onclick="carregarEstoque()">↻ Atualizar</button>
+      </div>
+      <div class="estoque-resumo-geral" id="estoqueResumoGeral" style="display:none"></div>
+      <div class="estoque-grid" id="estoqueGrid">
+        <div class="estoque-loading">Carregando...</div>
+      </div>
     </div>
 
     <!-- PEDIDOS -->
@@ -529,6 +573,93 @@ async function salvarPedidoGH(pedido){
     return ok;
   }catch(e){console.warn('GH erro:',e);return false;}
 }
+
+async function carregarEstoque(){
+  const grid=document.getElementById('estoqueGrid');
+  const resumo=document.getElementById('estoqueResumoGeral');
+  grid.innerHTML='<div class="estoque-loading"><div class="spinner" style="display:inline-block;margin-right:8px"></div> Calculando estoque...</div>';
+  resumo.style.display='none';
+
+  // Carrega pedidos do GitHub
+  let pedidos=[];
+  if(config.ghToken){
+    try{
+      const ex=await ghGet('pedidos.json');
+      if(ex) pedidos=JSON.parse(decodeURIComponent(escape(atob(ex.content.replace(/\n/g,'')))));
+    }catch(e){pedidos=[];}
+  }
+
+  // Monta mapa de vendas por produto
+  const vendas={};  // id -> {qty, compradores:[]}
+  pedidos.forEach(ped=>{
+    (ped.itens||[]).forEach(item=>{
+      // tenta casar pelo nome
+      const prod=produtos.find(p=>p.nome===item.nome);
+      const key=prod?prod.id:item.nome;
+      if(!vendas[key])vendas[key]={qty:0,compradores:[]};
+      vendas[key].qty+=item.qty;
+      if(ped.comprador&&!vendas[key].compradores.includes(ped.comprador))
+        vendas[key].compradores.push(ped.comprador);
+    });
+  });
+
+  // Resumo geral
+  const totalVendido=Object.values(vendas).reduce((s,v)=>s+v.qty,0);
+  const totalArrecadado=pedidos.reduce((s,p)=>s+p.total,0);
+  const totalPedidos=pedidos.length;
+  resumo.style.display='grid';
+  resumo.innerHTML=`
+    <div class="erg-card"><div class="erg-valor">R$ ${fmt(totalArrecadado)}</div><div class="erg-label">Total arrecadado</div></div>
+    <div class="erg-card"><div class="erg-valor">${totalPedidos}</div><div class="erg-label">Pedidos</div></div>
+    <div class="erg-card"><div class="erg-valor">${totalVendido}</div><div class="erg-label">Itens vendidos</div></div>
+  `;
+
+  if(!produtos.length){grid.innerHTML='<div class="estoque-loading">Nenhum produto cadastrado.</div>';return;}
+
+  grid.innerHTML='';
+  produtos.forEach(p=>{
+    const f=getFoto(p);
+    const v=vendas[p.id]||{qty:0,compradores:[]};
+    const vendido=v.qty;
+    const ilimitado=p.estoque===0;
+    const disponivel=ilimitado?null:Math.max(0,p.estoque-vendido);
+    const total=ilimitado?vendido+10:p.estoque;
+    const pct=ilimitado?0:Math.round((vendido/Math.max(total,1))*100);
+
+    const card=document.createElement('div');
+    card.className='estoque-card';
+    card.innerHTML=`
+      <div class="estoque-card-header">
+        <div class="estoque-thumb">${f?`<img src="${f}" alt="${p.nome}">`:'📦'}</div>
+        <div style="flex:1;min-width:0">
+          <div class="estoque-nome">${p.nome}</div>
+          <div class="estoque-preco">R$ ${fmt(p.preco)}</div>
+        </div>
+      </div>
+      <div class="estoque-bars">
+        <div class="estoque-row">
+          <span class="estoque-label">Vendidos</span>
+          <span class="estoque-num vendido">${vendido}</span>
+        </div>
+        <div class="barra-wrap"><div class="barra-fill amarelo" style="width:${ilimitado?Math.min(vendido*10,100):pct}%"></div></div>
+        <div class="estoque-row">
+          <span class="estoque-label">Disponível</span>
+          ${ilimitado
+            ? '<span class="estoque-num ilimitado">Ilimitado</span>'
+            : `<span class="estoque-num disponivel">${disponivel}</span>`}
+        </div>
+        ${!ilimitado?`<div class="barra-wrap"><div class="barra-fill verde" style="width:${100-pct}%"></div></div>`:''}
+      </div>
+      ${v.compradores.length>0?`
+      <div class="compradores-lista">
+        <div class="compradores-titulo">👤 Compradores</div>
+        ${v.compradores.map(c=>`<span class="comprador-tag">✅ ${c}</span>`).join('')}
+      </div>`:''}
+    `;
+    grid.appendChild(card);
+  });
+}
+
 async function carregarPedidos(){
   const lista=document.getElementById('pedidosLista');
   lista.innerHTML='<div class="pedidos-loading"><div class="spinner" style="display:inline-block;margin-right:8px"></div> Carregando...</div>';
@@ -617,13 +748,14 @@ function toast(msg,tipo='verde'){const el=document.getElementById('toast');el.te
 
 /* ── ABAS ── */
 function mudarAba(aba){
-  const abas=['config','produtos','pedidos'];
+  const abas=['config','produtos','estoque','pedidos'];
   document.querySelectorAll('.admin-tab').forEach((t,i)=>t.classList.toggle('active',abas[i]===aba));
   document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
   document.getElementById('tab-'+aba).classList.add('active');
   if(aba==='config')preencherFormConfig();
   if(aba==='produtos')renderAdminLista();
-  if(aba==='pedidos')carregarPedidos();
+  if(aba==='estoque')carregarEstoque();
+    if(aba==='pedidos')carregarPedidos();
 }
 
 /* ── UPLOAD ── */
