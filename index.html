@@ -185,10 +185,10 @@ body{font-family:'Nunito',sans-serif;background:#0a1a0a;color:#fff;overflow-x:hi
 .ai-preco{font-family:'Bebas Neue',cursive;font-size:19px;color:var(--amarelo);white-space:nowrap;}
 .ai-actions{display:flex;gap:5px;}
 .btn-edit,.btn-del{border:none;border-radius:7px;padding:6px 11px;font-family:'Nunito',sans-serif;font-weight:800;font-size:11px;cursor:pointer;transition:.2s;}
-.btn-edit{background:rgba(0,39,118,.5);color:#8ab4ff;border:1px solid rgba(0,100,255,.3);}
+.btn-edit{background:rgba(0,39,118,.6);color:#8ab4ff;border:1.5px solid rgba(0,100,255,.4);white-space:nowrap;padding:6px 14px;}
 .btn-edit:hover{background:rgba(0,39,118,.9);color:#fff;}
-.btn-del{background:rgba(255,60,60,.1);color:#ff8080;border:1px solid rgba(255,60,60,.3);}
-.btn-del:hover{background:rgba(255,60,60,.28);}
+.btn-del{background:rgba(200,30,30,.25);color:#ff5050;border:1.5px solid rgba(255,60,60,.6);font-weight:900;white-space:nowrap;padding:6px 14px;}
+.btn-del:hover{background:rgba(255,60,60,.4);color:#fff;}
 .admin-empty{text-align:center;padding:24px;color:rgba(255,255,255,.3);font-size:13px;}
 
 /* ESTOQUE */
@@ -338,14 +338,14 @@ footer img{width:26px;height:26px;object-fit:contain;vertical-align:middle;margi
       <button class="admin-close" onclick="fecharAdmin()">✕ Fechar</button>
     </div>
     <div class="admin-tabs">
-      <div class="admin-tab active" onclick="mudarAba('config')">💳 Configurações</div>
-      <div class="admin-tab" onclick="mudarAba('produtos')">📦 Produtos</div>
+      <div class="admin-tab active" onclick="mudarAba('produtos')">📦 Produtos</div>
       <div class="admin-tab" onclick="mudarAba('estoque')">📊 Estoque</div>
       <div class="admin-tab" onclick="mudarAba('pedidos')">📋 Pedidos</div>
+      <div class="admin-tab" onclick="mudarAba('config')">⚙️ Configurações</div>
     </div>
 
     <!-- CONFIG -->
-    <div class="tab-content active" id="tab-config">
+    <div class="tab-content" id="tab-config">
       <div class="config-box">
         <h3>💳 Pix & QR Code</h3>
         <div class="config-field">
@@ -383,6 +383,17 @@ footer img{width:26px;height:26px;object-fit:contain;vertical-align:middle;margi
           <div class="config-hint">Pedidos também serão registrados na planilha automaticamente.</div>
         </div>
       </div>
+
+      <div class="config-box" style="border-color:rgba(255,60,60,.25);background:rgba(255,60,60,.04);">
+        <h3 style="color:#ff8080">🗑️ Limpar Carrinho</h3>
+        <div style="font-size:13px;color:rgba(255,255,255,.5);margin-bottom:14px;line-height:1.6">
+          Use se houver produtos adicionados por engano. Limpa o carrinho sem afetar pedidos já confirmados.
+        </div>
+        <button onclick="limparCarrinhoAdmin()" style="background:rgba(255,60,60,.2);border:1px solid rgba(255,60,60,.4);color:#ff8080;border-radius:10px;padding:10px 22px;font-family:'Bebas Neue',cursive;font-size:15px;letter-spacing:2px;cursor:pointer;">
+          🗑️ LIMPAR CARRINHO AGORA
+        </button>
+      </div>
+
       <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:4px;">
         <button class="btn-salvar-config" onclick="salvarConfig()">✅ Salvar</button>
         <span class="config-status" id="cfgStatus"></span>
@@ -393,7 +404,7 @@ footer img{width:26px;height:26px;object-fit:contain;vertical-align:middle;margi
     </div>
 
     <!-- PRODUTOS -->
-    <div class="tab-content" id="tab-produtos">
+    <div class="tab-content active" id="tab-produtos">
       <div class="form-novo">
         <h3 id="formTitulo">➕ Adicionar Produto</h3>
         <div class="form-grid">
@@ -748,7 +759,7 @@ function toast(msg,tipo='verde'){const el=document.getElementById('toast');el.te
 
 /* ── ABAS ── */
 function mudarAba(aba){
-  const abas=['config','produtos','estoque','pedidos'];
+  const abas=['produtos','estoque','pedidos','config'];
   document.querySelectorAll('.admin-tab').forEach((t,i)=>t.classList.toggle('active',abas[i]===aba));
   document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
   document.getElementById('tab-'+aba).classList.add('active');
@@ -791,7 +802,7 @@ function editarProduto(id){const p=produtos.find(x=>x.id===id);if(!p)return;edit
 function cancelarEdicao(){editandoId=null;limparForm();document.getElementById('formTitulo').textContent='➕ Adicionar Produto';document.getElementById('btnCancelarEdit').style.display='none';}
 function limparForm(){['fNome','fDesc','fPreco','fEstoque'].forEach(id=>document.getElementById(id).value='');fotoBase64=null;document.getElementById('fotoInput').value='';document.getElementById('uploadPlaceholder').style.display='block';document.getElementById('uploadPreview').style.display='none';}
 function excluirProduto(id){if(!confirm('Remover este produto?'))return;produtos=produtos.filter(p=>p.id!==id);delete carrinho[id];salvarLS();renderAdminLista();renderProdutos();updateUI();toast('🗑️ Removido!','verde');}
-function renderAdminLista(){document.getElementById('adminQtd').textContent=produtos.length;const lista=document.getElementById('adminLista');if(!produtos.length){lista.innerHTML='<div class="admin-empty">Nenhum produto.</div>';return;}lista.innerHTML=produtos.map(p=>{const f=getFoto(p);return`<div class="admin-item"><div class="ai-img">${f?`<img src="${f}" alt="${p.nome}">`:'📦'}</div><div class="ai-info"><div class="ai-nome">${p.nome}</div><div class="ai-desc">${p.desc||'—'} · ${p.estoque===0?'Ilimitado':p.estoque+' un.'}</div></div><div class="ai-preco">R$ ${fmt(p.preco)}</div><div class="ai-actions"><button class="btn-edit" onclick="editarProduto(${p.id})">✏️</button><button class="btn-del" onclick="excluirProduto(${p.id})">🗑️</button></div></div>`;}).join('');}
+function renderAdminLista(){document.getElementById('adminQtd').textContent=produtos.length;const lista=document.getElementById('adminLista');if(!produtos.length){lista.innerHTML='<div class="admin-empty">Nenhum produto.</div>';return;}lista.innerHTML=produtos.map(p=>{const f=getFoto(p);return`<div class="admin-item"><div class="ai-img">${f?`<img src="${f}" alt="${p.nome}">`:'📦'}</div><div class="ai-info"><div class="ai-nome">${p.nome}</div><div class="ai-desc">${p.desc||'—'} · ${p.estoque===0?'Ilimitado':p.estoque+' un.'}</div></div><div class="ai-preco">R$ ${fmt(p.preco)}</div><div class="ai-actions"><button class="btn-edit" onclick="editarProduto(${p.id})">✏️ Editar</button><button class="btn-del" onclick="excluirProduto(${p.id})">✕ Excluir</button></div></div>`;}).join('');}
 
 /* ── LOJA ── */
 function renderProdutos(){
@@ -833,11 +844,21 @@ const fmt=v=>v.toFixed(2).replace('.',',');
 /* ── PIX ── */
 function abrirPix(){const qrSrc=config.qr||QR_DEFAULT_B64;document.getElementById('qrModalImg').src=qrSrc;document.getElementById('pixKeyDisplay').textContent=config.pix||'—';document.getElementById('modalPix').classList.add('open');}
 function fecharPix(){document.getElementById('modalPix').classList.remove('open');}
+
+function limparCarrinhoAdmin(){
+  if(!confirm('Limpar o carrinho atual? Pedidos já confirmados não serão afetados.'))return;
+  carrinho={};
+  updateUI();
+  toast('🗑️ Carrinho limpo!','verde');
+  fecharAdmin();
+}
+
 function copiarChave(){if(config.pix){navigator.clipboard.writeText(config.pix);toast('✅ Chave copiada!','verde');}}
 
 /* ── PDF ── */
 function gerarPDF(){
-  const nome=document.getElementById('nomComprador').value.trim()||'Comprador(a)';
+  const nome=document.getElementById('nomComprador').value.trim();
+  if(!nome){toast('⚠️ Digite seu nome antes de baixar o PDF!','erro');return;}
   const items=Object.values(carrinho).filter(x=>x.qty>0);
   if(!items.length)return;
   const total=items.reduce((s,x)=>s+x.preco*x.qty,0);
