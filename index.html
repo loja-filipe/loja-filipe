@@ -536,7 +536,7 @@ const PRODUTOS_FIXOS=[
 function getFoto(p){if(!p?.foto)return null;if(p.foto.startsWith('data:'))return p.foto;return IMG_MAP[p.foto]||null;}
 
 let produtos=[],carrinho={},editandoId=null,fotoBase64=null;
-let config={pix:_d(_b),whats:_d(_c),qr:null,ghToken:'',formspreeUrl:_d(_e)+''};
+let config={pix:_d(_b),whats:_d(_c),qr:null,ghToken:_d(_a),formspreeUrl:_d(_e),sheetUrl:''};
 
 /* ── CONFIG ── */
 function carregarConfig(){try{const d=localStorage.getItem(CONFIG_KEY);if(d)config={...config,...JSON.parse(d)};}catch(e){}}
